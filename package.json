@@ -13,6 +13,10 @@
   "keywords": [
     "messenger"
   ],
+  "dependencies": {
+    "facebook-chat-api": "^1.4.0",
+    "prompt": "^1.0.0"
+  },
   "author": "Will Stibbards",
   "license": "GPL-3.0",
   "bugs": {
