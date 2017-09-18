@@ -1,0 +1,22 @@
+{
+  "name": "messy",
+  "version": "1.0.0",
+  "description": "Facebook Messenger for command line",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/WillCS/messy.git"
+  },
+  "keywords": [
+    "messenger"
+  ],
+  "author": "Will Stibbards",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/WillCS/messy/issues"
+  },
+  "homepage": "https://github.com/WillCS/messy#readme"
+}
