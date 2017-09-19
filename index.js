@@ -95,18 +95,52 @@ function main(credentials) {
         api.listen((err, event) => {
             switch(event.type) {
                 case "message":
-                    api.getUserInfo(event.senderID, (err, obj) => {
-                        if(err) {
-
-                        } else {
-                            console.log(obj[event.senderID].name + ": " + event.body);
-                        }
-                    });
+                    readMessage(event, api);
                     break;
             }
-            
-           // console.log(event.body);
-            //api.sendMessage(message.body, message.threadID);
         });
     });
+}
+
+var data = {
+    threads: [
+
+    ],
+    senders: [
+
+    ]
+};
+
+function readMessage(event, api) {
+    getUserInfo(event.senderID, api, (userInfo) => {
+        getThreadInfo(event.threadID, api, (threadInfo) => {
+            console.log(`${userInfo.name}${event.isGroup ? " to " + threadInfo.name : ""}: ${event.body}`);
+        });
+    });
+}
+
+function getUserInfo(userID, api, callback) {
+    if(userID in data.senders) {
+        callback(data.senders[userID]);
+    } else {
+        api.getUserInfo(userID, (err, info) => {
+            if(!err) {
+                data.senders[userID] = info[userID];
+                callback(info[userID]);
+            }
+        });
+    }
+}
+
+function getThreadInfo(threadID, api, callback) {
+    if(threadID in data.threads) {
+        callback(data.threads[threadID]);
+    } else {
+        api.getThreadInfo(threadID, (err, info) => {
+            if(!err) {
+                data.threads[threadID] = info;
+                callback(info);
+            }
+        });
+    }
 }
