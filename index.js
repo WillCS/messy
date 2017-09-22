@@ -4,24 +4,21 @@ const login = require("facebook-chat-api");
 const vorpal = require("vorpal")();
 
 var data = {
-    threads: [
-
-    ],
-    senders: [
-
-    ]
+    threads: {},
+    senders: {}
 };
 
-var aliases = {
-    
-};
+var aliases = {};
 
 if(fs.existsSync("appstate.json")) {
     main({
         appState: JSON.parse(fs.readFileSync("appstate.json", "utf8"))
     });
 } else {
-    var input = {
+    prompt.colors = false;
+    prompt.message = "";
+    prompt.start();
+    prompt.get({
         properties: {
             email: {
                 required: true,
@@ -33,12 +30,7 @@ if(fs.existsSync("appstate.json")) {
                 message: "Password"
             }
         }
-    };
-
-    prompt.colors = false;
-    prompt.message = "";
-    prompt.start();
-    prompt.get(input, (err, result) => {
+    }, (err, result) => {
         main({
             email: result.email,
             password: result.password
@@ -65,6 +57,8 @@ function main(credentials) {
                     return console.error(err);
             }
         }
+        
+        fs.writeFileSync("appstate.json", JSON.stringify(api.getAppState()));
 
         if(fs.existsSync(("aliases.json"))) {
             var list = JSON.parse(fs.readFileSync("aliases.json", "utf8"));
@@ -72,14 +66,7 @@ function main(credentials) {
                 aliases = list[api.getCurrentUserID()];
             }
         }
-
-        vorpal
-            .command("Test", "aaaa")
-            .action((args, callback) => {
-                vorpal.log("AAAAAA");
-                callback();
-            });
-
+        
         vorpal
             .delimiter(">")
             .show();
@@ -104,9 +91,9 @@ function main(credentials) {
             });
 
         vorpal
-            .command("alias [threadID] [alias]", "Registers a new alias for a thread")
+            .command("alias <threadID> <alias>", "Registers a new alias")
             .action((args, callback) => {
-                aliases[args.threadID] = args.alias;
+                aliases[args.alias] = args.threadID;
 
                 var list = {};
                 if(fs.existsSync("aliases.json")) {
@@ -118,11 +105,38 @@ function main(credentials) {
             });
 
         vorpal
-            .command("msg [recipient] [message]", "Send a new message")
+            .command("getID <thread>", "Get the thread ID of a specific thread")
+            .action((args, callback) => {
+                for(threadData in data.threads) {
+                    if(data.threads[threadData].name === args.thread) {
+                        vorpal.log(threadData);
+                        callback();
+                        return;
+                    }
+                }
+
+                vorpal.log(`No thread with name ${args.thread} found.`)
+
+                callback();
+            });
+
+        vorpal
+            .command("msg <recipient> <message>", "Send a new message")
             .action((args, callback) => {
                 if(args.recipient in aliases) {
                     api.sendMessage({body: args.message}, aliases[args.recipient]);
                 }
+                
+                callback();
+            });
+
+        vorpal
+            .command("aliases", "Retrieve a list of aliases")
+            .action((args, callback) => {
+                Object.keys(aliases).forEach((key) => {
+                    vorpal.log(`${key}: ${aliases[key]}`);
+                });
+
                 callback();
             });
 
@@ -135,11 +149,6 @@ function main(credentials) {
                 }
             });
         }
-
-        /*stream.on("SIGINT", exit);
-        stream.on("SIGTSTP", exit);*/
-
-        fs.writeFileSync("appstate.json", JSON.stringify(api.getAppState()));
 
         api.listen((err, event) => {
             switch(event.type) {
@@ -154,7 +163,6 @@ function main(credentials) {
 function readMessage(event, vorpal, api) {
     getUserInfo(event.senderID, api, (userInfo) => {
         getThreadInfo(event.threadID, api, (threadInfo) => {
-            vorpal.log(event);
             vorpal.log(`${userInfo.name}${event.isGroup ? " to " + threadInfo.name : ""}: ${event.body}`);
         });
     });
