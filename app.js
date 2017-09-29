@@ -3,12 +3,14 @@ const chatAPI = require("facebook-chat-api");
 
 exports.app = class {
     constructor() {
-        this.data = {threads: {}, senders: {}};
+        this.threads = {};
+        this.senders = {};
         this.aliases = {};
 
         this.login()
             .then((api) => {
                 this.api = api;
+                this.api.setOptions({selfListen: true});
                 this.userID = this.api.getCurrentUserID();
 
                 fs.writeFileSync("appstate.json", JSON.stringify(api.getAppState()));
@@ -115,13 +117,13 @@ exports.app = class {
                 callback();
             });
 
-        /** Broken */
         this.vorpal
             .command("getID <thread>", "Get the ID of a thread")
             .action((args, callback) => {
                 this.getThreadID(args.thread)
-                    .then(this.vorpal.log)
-                    .catch(() => {
+                    .then((id) => {
+                        this.vorpal.log(id);
+                    }).catch(() => {
                         this.vorpal.log(`No thread with name ${args.thread} found.`);
                     });
                 callback();
@@ -139,19 +141,18 @@ exports.app = class {
                 callback();
             });
 
-        /** Broken */
         this.vorpal
             .command("count <alias>", "Retrieve the total number of messages"
                     + " exchanged in a given thread.")
             .action((args, callback) => {
                 if(args.alias in this.aliases) {
                     this.getThreadInfo(this.aliases[args.alias], true).then(() => {
-                        this.vorpal.log(`There are ${threadInfo.messageCount}` +
+                        this.vorpal.log(`There are ${this.threads[this.aliases[args.alias]].messageCount}` +
                                 " messages in this thread.");
-                        callback();
                     }).catch((err) => {});
+                } else {
+                    this.vorpal.log(`No thread with alias ${args.alias} found.`);
                 }
-                this.vorpal.log(`No thread with alias ${args.alias} found.`)
                 callback();
             });
         
@@ -179,17 +180,6 @@ exports.app = class {
         }
         list[this.userID] = this.aliases;
         fs.writeFileSync("aliases.json", JSON.stringify(list));
-    }
-
-    getID(threadName) {
-        for(threadID in this.data.threads) {
-            if(this.data.threads[threadID].name == threadName) {
-                this.vorpal.log(threadID);
-                return;
-            }
-        }
-
-        this.vorpal.log(`No thread with name ${threadName} found.`);
     }
 
     logout() {
@@ -222,8 +212,8 @@ exports.app = class {
         .then(() => {
             this.getThreadInfo(message.threadID);
         }).then(() => {
-            let userInfo = this.data.senders[message.senderID];
-            let threadInfo = this.data.threads[message.threadID];
+            let userInfo = this.senders[message.senderID];
+            let threadInfo = this.threads[message.threadID];
             this.vorpal.log(userInfo.name +
                 (message.isGroup ? " to " + threadInfo.name : "") + ": " + 
                 message.body);
@@ -234,12 +224,12 @@ exports.app = class {
 
     getUserInfo(userID, force = false) {
         return new Promise((resolve, reject) => {
-            if(userID in this.data.senders && !force) {
+            if(userID in this.senders && !force) {
                 resolve()
             } else {
                 this.api.getUserInfo(userID, (err, info) => {
                     if(!err) {
-                        this.data.senders[userID] = info[userID];
+                        this.senders[userID] = info[userID];
                         resolve();
                     } else {
                         reject(err);
@@ -251,12 +241,12 @@ exports.app = class {
 
     getThreadInfo(threadID, force = false) {
         return new Promise((resolve, reject) => {
-            if(threadID in this.data.threads && !force) {
+            if(threadID in this.threads && !force) {
                 resolve();
             } else {
                 this.api.getThreadInfo(threadID, (err, info) => {
                     if(!err) {
-                        this.data.threads[threadID] = info;
+                        this.threads[threadID] = info;
                         resolve();
                     } else {
                         reject(err);
@@ -268,13 +258,12 @@ exports.app = class {
 
     getThreadID(thread) {
         return new Promise((resolve, reject) => {
-            for(threadID in this.data.threads) {
-                if(data.threads[threadID].name === thread) {
+            for(let threadID in this.threads) {
+                if(this.threads[threadID].name === thread) {
                     resolve(threadID);
                     return;
                 }
             }
-
             reject();
         });
     }
