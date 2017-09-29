@@ -170,22 +170,52 @@ exports.app = class {
         this.vorpal
             .mode("thread <thread>")
             .description("Scope to a specific thread")
-            .delimiter("")
             .init((args, callback) => {
                 if(args.thread in this.aliases) {
                     let threadID = this.aliases[args.thread];
-                    if(!(threadID in this.threads)) {
-                        this.threads[threadID] = 
-                                new thread.thread(this.api, threadID);
-                    }
+                    this.getThreadInfo(threadID, true).then(() => {
+                        if(!(threadID in this.threads)) {
+                            this.threads[threadID] = 
+                                    new thread.thread(this.api, this.threadInfo[threadID], threadID);
+                        }
 
-                    this.activeThread = this.threads[threadID];
-                    callback();
+                        this.activeThread = this.threads[threadID];
+                        callback();
+                    }).catch(() => {
+                        callback();
+                    });
                 }
             }).action((command, callback) => {
-                this.sendMessage({body: command}, this.activeThread.threadID)
-                    .then(() => {})
-                    .catch(() => {});
+                if(command.slice(0, 1) === "!") {
+                    command = command.slice(1);
+                    this.threadContext.exec(command);
+                } else {
+                    this.sendMessage({body: command}, this.activeThread.threadID)
+                        .then(() => {})
+                        .catch(() => {});
+                }
+                callback();
+            });
+
+        this.threadContext
+            .command("react [size]")
+            .description("Send a reaction")
+            .action((args, callback) => {
+                let emoji = this.activeThread.emoji;
+                let size = "small";
+                if("size" in args) {
+                    let intSize = parseInt(args.size);
+                    if(intSize < 2) {
+                        size = "small";
+                    } else if(intSize == 2) {
+                        size = "medium";
+                    } else {
+                        size = "large";
+                    }
+                }
+                
+                this.sendMessage({emoji: emoji, emojiSize: size}, this.activeThread.threadID)
+                    .then(() => {}).catch((err) => {});
                 callback();
             });
 
