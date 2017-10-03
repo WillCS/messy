@@ -115,6 +115,15 @@ exports.app = class {
                 callback();
             });
 
+        // rmalias
+        this.vorpal
+            .command("rmalias <alias>")
+            .description("Remove a given alias")
+            .action((args, callback) => {
+                this.removeAlias(args.alias);
+                callback();
+            });
+
         // aliases
         this.vorpal
             .command("aliases", "Retrieve a list of aliases")
@@ -232,8 +241,10 @@ exports.app = class {
     }
 
     removeAlias(alias) {
-        delete this.aliases[alias];
-        this.updateAliasFile();
+        if(alias in this.aliases) {
+            delete this.aliases[alias];
+            this.updateAliasFile();
+        }
     }
 
     updateAliasFile() {
